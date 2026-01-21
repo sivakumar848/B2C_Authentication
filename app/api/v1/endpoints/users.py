@@ -5,9 +5,16 @@ from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
 
+# Dependency injection function
+def get_user_repository() -> UserRepository:
+    return UserRepository()
+
 @router.get("/me", summary="Get current user profile", response_model=UserResponse)
-async def get_current_user_profile(current_user: str = Depends(get_current_user)):
-    user = await UserRepository.get_user_by_id(current_user)
+async def get_current_user_profile(
+    current_user: str = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    user = await user_repo.get_user_by_id(current_user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -26,9 +33,10 @@ async def get_current_user_profile(current_user: str = Depends(get_current_user)
 @router.put("/me", summary="Update current user profile", response_model=UserResponse)
 async def update_current_user_profile(
     update_data: UserUpdate,
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
 ):
-    user = await UserRepository.update_user(current_user, update_data)
+    user = await user_repo.update_user(current_user, update_data)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

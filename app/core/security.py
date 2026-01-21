@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from typing import Any, Union, Optional
+import secrets
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
+from app.utils.helpers import utc_now
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -29,15 +31,15 @@ def create_access_token(
         str: Encoded JWT token
     """
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utc_now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = utc_now() + timedelta(minutes=settings.access_token_expire_minutes)
     
     to_encode = {
         "exp": expire, 
         "sub": str(subject), 
         "type": "access",
-        "iat": datetime.utcnow(),
+        "iat": utc_now(),
         **extra_data
     }
     
@@ -61,12 +63,12 @@ def create_refresh_token(
     Returns:
         str: Encoded JWT refresh token
     """
-    expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+    expire = utc_now() + timedelta(days=settings.refresh_token_expire_days)
     to_encode = {
         "exp": expire, 
         "sub": str(subject), 
         "type": "refresh",
-        "iat": datetime.utcnow(),
+        "iat": utc_now(),
         **extra_data
     }
     
@@ -111,7 +113,7 @@ def get_password_hash(password: str) -> str:
 
 def generate_otp(length: int = 6) -> str:
     """
-    Generate a random OTP
+    Generate a cryptographically secure random OTP
     
     Args:
         length: Length of the OTP (default: 6)
@@ -119,7 +121,6 @@ def generate_otp(length: int = 6) -> str:
     Returns:
         str: Generated OTP
     """
-    import random
     if length < 4:
         raise ValueError("OTP length must be at least 4")
-    return ''.join(random.choices('0123456789', k=length))
+    return ''.join(secrets.choice('0123456789') for _ in range(length))

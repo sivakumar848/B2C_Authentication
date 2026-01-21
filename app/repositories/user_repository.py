@@ -1,9 +1,11 @@
 from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
+from bson.errors import InvalidId
 from app.core.database import db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.utils.helpers import utc_now
 
 class UserRepository:
     
@@ -15,8 +17,8 @@ class UserRepository:
             "password_hash": password_hash,
             "is_verified": False,
             "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": utc_now(),
+            "updated_at": utc_now()
         }
         
         result = await db.get_db().users.insert_one(user_doc)
@@ -25,7 +27,12 @@ class UserRepository:
     
     @staticmethod
     async def get_user_by_id(user_id: str) -> Optional[User]:
-        user_doc = await db.get_db().users.find_one({"_id": ObjectId(user_id)})
+        try:
+            oid = ObjectId(user_id)
+        except InvalidId:
+            return None  # Invalid ID format = user not found
+        
+        user_doc = await db.get_db().users.find_one({"_id": oid})
         if user_doc:
             user_doc["id"] = str(user_doc["_id"])
             return User(**user_doc)
@@ -71,7 +78,12 @@ class UserRepository:
         
     @staticmethod
     async def update_user(user_id: str, update_data: UserUpdate) -> Optional[User]:
-        update_doc = {"updated_at": datetime.utcnow()}
+        try:
+            oid = ObjectId(user_id)
+        except InvalidId:
+            return None  # Invalid ID format = user not found
+            
+        update_doc = {"updated_at": utc_now()}
         
         if update_data.username is not None:
             update_doc["username"] = update_data.username
@@ -79,7 +91,7 @@ class UserRepository:
             update_doc["is_active"] = update_data.is_active
             
         result = await db.get_db().users.update_one(
-            {"_id": ObjectId(user_id)}, 
+            {"_id": oid}, 
             {"$set": update_doc}
         )
         
@@ -89,21 +101,36 @@ class UserRepository:
     
     @staticmethod
     async def verify_user(user_id: str) -> bool:
+        try:
+            oid = ObjectId(user_id)
+        except InvalidId:
+            return False  # Invalid ID format = verification failed
+            
         result = await db.get_db().users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"is_verified": True, "updated_at": datetime.utcnow()}}
+            {"_id": oid},
+            {"$set": {"is_verified": True, "updated_at": utc_now()}}
         )
         return result.modified_count > 0
     
     @staticmethod
     async def update_password(user_id: str, new_password_hash: str) -> bool:
+        try:
+            oid = ObjectId(user_id)
+        except InvalidId:
+            return False  # Invalid ID format = password update failed
+            
         result = await db.get_db().users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"password_hash": new_password_hash, "updated_at": datetime.utcnow()}}
+            {"_id": oid},
+            {"$set": {"password_hash": new_password_hash, "updated_at": utc_now()}}
         )
         return result.modified_count > 0
     
     @staticmethod
     async def delete_user(user_id: str) -> bool:
-        result = await db.get_db().users.delete_one({"_id": ObjectId(user_id)})
+        try:
+            oid = ObjectId(user_id)
+        except InvalidId:
+            return False  # Invalid ID format = deletion failed
+            
+        result = await db.get_db().users.delete_one({"_id": oid})
         return result.deleted_count > 0

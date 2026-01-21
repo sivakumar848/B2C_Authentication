@@ -9,6 +9,30 @@ class Database:
     async def connect_db(cls):
         try:
             cls.client = AsyncIOMotorClient(settings.mongodb_url)
+            
+            # Force connection attempt
+            await cls.client.server_info()
+            
+            logger.info("Successfully connected to MongoDB")
+            
+            # Create indexes
+            db = cls.client[settings.database_name]
+            
+            # Unique indexes for users
+            await db.users.create_index("email", unique=True)
+            await db.users.create_index("username", unique=True)
+            
+            # Indexes for OTP lookups
+            await db.otp_logs.create_index([("email", 1), ("verified", 1)])
+            await db.otp_logs.create_index("expiry_time", expireAfterSeconds=0)  # TTL index
+            
+            # Indexes for refresh tokens
+            await db.refresh_tokens.create_index("refresh_token")
+            await db.refresh_tokens.create_index("user_id")
+            await db.refresh_tokens.create_index("expiry", expireAfterSeconds=0)  # TTL index
+            
+            logger.info("Database connected and indexes created")
+            
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {str(e)}")
             raise

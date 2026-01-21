@@ -18,7 +18,7 @@ A comprehensive B2C (Business-to-Consumer) authentication system built with Fast
 
 ## 📋 Prerequisites
 
-- Python 3.9+
+- Python 3.11
 - MongoDB (local or cloud instance) OR AWS DynamoDB
 - pip package manager
 - AWS Account (for AWS services integration - optional)
